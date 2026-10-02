@@ -1,0 +1,255 @@
+{
+  "rules": {
+    "users": {
+      ".read": "auth != null",
+      "$uid": {
+        ".write": "auth != null && auth.uid === $uid",
+        ".validate": "newData.hasChildren(['name', 'email'])",
+        "name": {
+          ".validate": "newData.isString() && newData.val().length <= 80"
+        },
+        "bio": {
+          ".validate": "newData.isString() && newData.val().length <= 500"
+        }
+      }
+    },
+    "usersByEmail": {
+      "$ek": {
+        ".read": "auth != null",
+        ".write": "auth != null && auth.token.email.toLowerCase().replace('.', ',') === $ek",
+        ".validate": "newData.val() === auth.uid"
+      }
+    },
+    "presence": {
+      ".read": "auth != null",
+      "$uid": {
+        ".write": "auth != null && auth.uid === $uid"
+      }
+    },
+    "userSettings": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && auth.uid === $uid"
+      }
+    },
+    "userWorkspaces": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        "$wid": {
+          ".write": "auth != null && (auth.uid === $uid || (root.child('workspaceMembers/' + $wid + '/' + auth.uid + '/role').val() === 'owner' || root.child('workspaceMembers/' + $wid + '/' + auth.uid + '/role').val() === 'admin'))"
+        }
+      }
+    },
+    "workspaces": {
+      "$wid": {
+        ".read": "auth != null && root.child('workspaceMembers/' + $wid + '/' + auth.uid).exists()",
+        ".write": "auth != null && ((!data.exists() && newData.child('ownerId').val() === auth.uid) || (root.child('workspaceMembers/' + $wid + '/' + auth.uid + '/role').val() === 'owner' || root.child('workspaceMembers/' + $wid + '/' + auth.uid + '/role').val() === 'admin'))",
+        ".validate": "newData.hasChildren(['name', 'ownerId'])",
+        "name": {
+          ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 60"
+        }
+      }
+    },
+    "workspaceMembers": {
+      "$wid": {
+        ".read": "auth != null && root.child('workspaceMembers/' + $wid + '/' + auth.uid).exists()",
+        "$uid": {
+          ".write": "auth != null && ( (!data.exists() && auth.uid === $uid && newData.child('role').val() === 'owner' && newRootData.child('workspaces/' + $wid + '/ownerId').val() === auth.uid) || ((root.child('workspaceMembers/' + $wid + '/' + auth.uid + '/role').val() === 'owner' || root.child('workspaceMembers/' + $wid + '/' + auth.uid + '/role').val() === 'admin') && $uid !== root.child('workspaces/' + $wid + '/ownerId').val()) || (auth.uid === $uid && !newData.exists() && $uid !== root.child('workspaces/' + $wid + '/ownerId').val()) || (!data.exists() && auth.uid === $uid && newData.child('role').val() === root.child('invitations/byEmail/' + auth.token.email.toLowerCase().replace('.', ',') + '/' + $wid + '/role').val()) || (root.child('workspaces/' + $wid + '/ownerId').val() === auth.uid) )"
+        }
+      }
+    },
+    "invitations": {
+      "byEmail": {
+        "$ek": {
+          ".read": "auth != null && auth.token.email.toLowerCase().replace('.', ',') === $ek",
+          "$wid": {
+            ".write": "auth != null && ((root.child('workspaceMembers/' + $wid + '/' + auth.uid + '/role').val() === 'owner' || root.child('workspaceMembers/' + $wid + '/' + auth.uid + '/role').val() === 'admin') || auth.token.email.toLowerCase().replace('.', ',') === $ek)"
+          }
+        }
+      },
+      "byWorkspace": {
+        "$wid": {
+          ".read": "auth != null && (root.child('workspaceMembers/' + $wid + '/' + auth.uid + '/role').val() === 'owner' || root.child('workspaceMembers/' + $wid + '/' + auth.uid + '/role').val() === 'admin')",
+          ".write": "auth != null && (root.child('workspaceMembers/' + $wid + '/' + auth.uid + '/role').val() === 'owner' || root.child('workspaceMembers/' + $wid + '/' + auth.uid + '/role').val() === 'admin')",
+          "$ek": {
+            ".write": "auth != null && ((root.child('workspaceMembers/' + $wid + '/' + auth.uid + '/role').val() === 'owner' || root.child('workspaceMembers/' + $wid + '/' + auth.uid + '/role').val() === 'admin') || auth.token.email.toLowerCase().replace('.', ',') === $ek)"
+          }
+        }
+      }
+    },
+    "channels": {
+      "$wid": {
+        ".read": "auth != null && root.child('workspaceMembers/' + $wid + '/' + auth.uid).exists()",
+        "$cid": {
+          ".write": "auth != null && root.child('workspaceMembers/' + $wid + '/' + auth.uid).exists() && (!data.exists() || (root.child('workspaceMembers/' + $wid + '/' + auth.uid + '/role').val() === 'owner' || root.child('workspaceMembers/' + $wid + '/' + auth.uid + '/role').val() === 'admin') || data.child('createdBy').val() === auth.uid)",
+          ".validate": "newData.hasChildren(['name', 'isPrivate', 'createdBy'])",
+          "name": {
+            ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 40"
+          }
+        }
+      }
+    },
+    "channelMembers": {
+      "$wid": {
+        "$cid": {
+          ".write": "auth != null && ((root.child('workspaceMembers/' + $wid + '/' + auth.uid + '/role').val() === 'owner' || root.child('workspaceMembers/' + $wid + '/' + auth.uid + '/role').val() === 'admin') || root.child('channels/' + $wid + '/' + $cid + '/createdBy').val() === auth.uid)",
+          ".read": "auth != null && root.child('workspaceMembers/' + $wid + '/' + auth.uid).exists() && (root.child('channels/' + $wid + '/' + $cid + '/isPrivate').val() === false || root.child('channelMembers/' + $wid + '/' + $cid + '/' + auth.uid).exists())",
+          "$uid": {
+            ".write": "auth != null && root.child('workspaceMembers/' + $wid + '/' + auth.uid).exists() && ( (auth.uid === $uid && root.child('channels/' + $wid + '/' + $cid + '/isPrivate').val() === false) || (auth.uid === $uid && !root.child('channels/' + $wid + '/' + $cid).exists()) || root.child('channelMembers/' + $wid + '/' + $cid + '/' + auth.uid).exists() || (root.child('workspaceMembers/' + $wid + '/' + auth.uid + '/role').val() === 'owner' || root.child('workspaceMembers/' + $wid + '/' + auth.uid + '/role').val() === 'admin') )"
+          }
+        }
+      }
+    },
+    "channelPrefs": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && auth.uid === $uid"
+      }
+    },
+    "groups": {
+      "$wid": {
+        "$gid": {
+          ".read": "auth != null && root.child('groups/' + $wid + '/' + $gid + '/members/' + auth.uid).exists()",
+          ".write": "auth != null && root.child('workspaceMembers/' + $wid + '/' + auth.uid).exists() && (!data.exists() || data.child('members/' + auth.uid).exists())"
+        }
+      }
+    },
+    "userGroups": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        "$wid": {
+          ".write": "auth != null && root.child('workspaceMembers/' + $wid + '/' + auth.uid).exists()"
+        }
+      }
+    },
+    "channelMeta": {
+      "$wid": {
+        "$cid": {
+          ".read": "auth != null && root.child('workspaceMembers/' + $wid + '/' + auth.uid).exists() && ($cid.beginsWith('dm_') && $cid.contains(auth.uid) || $cid.beginsWith('grp_') && root.child('groups/' + $wid + '/' + $cid + '/members/' + auth.uid).exists() || root.child('channels/' + $wid + '/' + $cid + '/isPrivate').val() === false && root.child('workspaceMembers/' + $wid + '/' + auth.uid).exists() || root.child('channelMembers/' + $wid + '/' + $cid + '/' + auth.uid).exists())",
+          ".write": "auth != null && root.child('workspaceMembers/' + $wid + '/' + auth.uid).exists() && ($cid.beginsWith('dm_') && $cid.contains(auth.uid) || $cid.beginsWith('grp_') && root.child('groups/' + $wid + '/' + $cid + '/members/' + auth.uid).exists() || root.child('channels/' + $wid + '/' + $cid + '/isPrivate').val() === false && root.child('workspaceMembers/' + $wid + '/' + auth.uid).exists() || root.child('channelMembers/' + $wid + '/' + $cid + '/' + auth.uid).exists())"
+        }
+      }
+    },
+    "lastRead": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && auth.uid === $uid"
+      }
+    },
+    "messages": {
+      "$wid": {
+        "$cid": {
+          ".read": "auth != null && root.child('workspaceMembers/' + $wid + '/' + auth.uid).exists() && ($cid.beginsWith('dm_') && $cid.contains(auth.uid) || $cid.beginsWith('grp_') && root.child('groups/' + $wid + '/' + $cid + '/members/' + auth.uid).exists() || root.child('channels/' + $wid + '/' + $cid + '/isPrivate').val() === false && root.child('workspaceMembers/' + $wid + '/' + auth.uid).exists() || root.child('channelMembers/' + $wid + '/' + $cid + '/' + auth.uid).exists())",
+          ".write": "auth != null && ((root.child('workspaceMembers/' + $wid + '/' + auth.uid + '/role').val() === 'owner' || root.child('workspaceMembers/' + $wid + '/' + auth.uid + '/role').val() === 'admin') || root.child('channels/' + $wid + '/' + $cid + '/createdBy').val() === auth.uid)",
+          ".indexOn": [
+            "createdAt"
+          ],
+          "$mid": {
+            ".write": "auth != null && root.child('workspaceMembers/' + $wid + '/' + auth.uid).exists() && ($cid.beginsWith('dm_') && $cid.contains(auth.uid) || $cid.beginsWith('grp_') && root.child('groups/' + $wid + '/' + $cid + '/members/' + auth.uid).exists() || root.child('channels/' + $wid + '/' + $cid + '/isPrivate').val() === false && root.child('workspaceMembers/' + $wid + '/' + auth.uid).exists() || root.child('channelMembers/' + $wid + '/' + $cid + '/' + auth.uid).exists()) && ((!data.exists() && newData.child('senderId').val() === auth.uid) || data.child('senderId').val() === auth.uid || (root.child('workspaceMembers/' + $wid + '/' + auth.uid + '/role').val() === 'owner' || root.child('workspaceMembers/' + $wid + '/' + auth.uid + '/role').val() === 'admin'))",
+            ".validate": "newData.hasChildren(['senderId', 'createdAt'])",
+            "text": {
+              ".validate": "newData.isString() && newData.val().length <= 8000"
+            },
+            "reactions": {
+              "$emoji": {
+                "$ruid": {
+                  ".write": "auth != null && root.child('workspaceMembers/' + $wid + '/' + auth.uid).exists() && ($cid.beginsWith('dm_') && $cid.contains(auth.uid) || $cid.beginsWith('grp_') && root.child('groups/' + $wid + '/' + $cid + '/members/' + auth.uid).exists() || root.child('channels/' + $wid + '/' + $cid + '/isPrivate').val() === false && root.child('workspaceMembers/' + $wid + '/' + auth.uid).exists() || root.child('channelMembers/' + $wid + '/' + $cid + '/' + auth.uid).exists()) && auth.uid === $ruid"
+                }
+              }
+            },
+            "votes": {
+              "$opt": {
+                "$ruid": {
+                  ".write": "auth != null && root.child('workspaceMembers/' + $wid + '/' + auth.uid).exists() && ($cid.beginsWith('dm_') && $cid.contains(auth.uid) || $cid.beginsWith('grp_') && root.child('groups/' + $wid + '/' + $cid + '/members/' + auth.uid).exists() || root.child('channels/' + $wid + '/' + $cid + '/isPrivate').val() === false && root.child('workspaceMembers/' + $wid + '/' + auth.uid).exists() || root.child('channelMembers/' + $wid + '/' + $cid + '/' + auth.uid).exists()) && auth.uid === $ruid"
+                }
+              }
+            },
+            "pinned": {
+              ".write": "auth != null && root.child('workspaceMembers/' + $wid + '/' + auth.uid).exists() && ($cid.beginsWith('dm_') && $cid.contains(auth.uid) || $cid.beginsWith('grp_') && root.child('groups/' + $wid + '/' + $cid + '/members/' + auth.uid).exists() || root.child('channels/' + $wid + '/' + $cid + '/isPrivate').val() === false && root.child('workspaceMembers/' + $wid + '/' + auth.uid).exists() || root.child('channelMembers/' + $wid + '/' + $cid + '/' + auth.uid).exists())"
+            },
+            "replyCount": {
+              ".write": "auth != null && root.child('workspaceMembers/' + $wid + '/' + auth.uid).exists() && ($cid.beginsWith('dm_') && $cid.contains(auth.uid) || $cid.beginsWith('grp_') && root.child('groups/' + $wid + '/' + $cid + '/members/' + auth.uid).exists() || root.child('channels/' + $wid + '/' + $cid + '/isPrivate').val() === false && root.child('workspaceMembers/' + $wid + '/' + auth.uid).exists() || root.child('channelMembers/' + $wid + '/' + $cid + '/' + auth.uid).exists())",
+              ".validate": "newData.isNumber() && newData.val() >= 0"
+            },
+            "lastReplyAt": {
+              ".write": "auth != null && root.child('workspaceMembers/' + $wid + '/' + auth.uid).exists() && ($cid.beginsWith('dm_') && $cid.contains(auth.uid) || $cid.beginsWith('grp_') && root.child('groups/' + $wid + '/' + $cid + '/members/' + auth.uid).exists() || root.child('channels/' + $wid + '/' + $cid + '/isPrivate').val() === false && root.child('workspaceMembers/' + $wid + '/' + auth.uid).exists() || root.child('channelMembers/' + $wid + '/' + $cid + '/' + auth.uid).exists())"
+            }
+          }
+        }
+      }
+    },
+    "threads": {
+      "$wid": {
+        "$cid": {
+          ".read": "auth != null && root.child('workspaceMembers/' + $wid + '/' + auth.uid).exists() && ($cid.beginsWith('dm_') && $cid.contains(auth.uid) || $cid.beginsWith('grp_') && root.child('groups/' + $wid + '/' + $cid + '/members/' + auth.uid).exists() || root.child('channels/' + $wid + '/' + $cid + '/isPrivate').val() === false && root.child('workspaceMembers/' + $wid + '/' + auth.uid).exists() || root.child('channelMembers/' + $wid + '/' + $cid + '/' + auth.uid).exists())",
+          ".write": "auth != null && ((root.child('workspaceMembers/' + $wid + '/' + auth.uid + '/role').val() === 'owner' || root.child('workspaceMembers/' + $wid + '/' + auth.uid + '/role').val() === 'admin') || root.child('channels/' + $wid + '/' + $cid + '/createdBy').val() === auth.uid)",
+          "$pid": {
+            ".write": "auth != null && ((root.child('workspaceMembers/' + $wid + '/' + auth.uid + '/role').val() === 'owner' || root.child('workspaceMembers/' + $wid + '/' + auth.uid + '/role').val() === 'admin') || root.child('messages/' + $wid + '/' + $cid + '/' + $pid + '/senderId').val() === auth.uid)",
+            ".indexOn": [
+              "createdAt"
+            ],
+            "$rid": {
+              ".write": "auth != null && root.child('workspaceMembers/' + $wid + '/' + auth.uid).exists() && ($cid.beginsWith('dm_') && $cid.contains(auth.uid) || $cid.beginsWith('grp_') && root.child('groups/' + $wid + '/' + $cid + '/members/' + auth.uid).exists() || root.child('channels/' + $wid + '/' + $cid + '/isPrivate').val() === false && root.child('workspaceMembers/' + $wid + '/' + auth.uid).exists() || root.child('channelMembers/' + $wid + '/' + $cid + '/' + auth.uid).exists()) && ((!data.exists() && newData.child('senderId').val() === auth.uid) || data.child('senderId').val() === auth.uid || (root.child('workspaceMembers/' + $wid + '/' + auth.uid + '/role').val() === 'owner' || root.child('workspaceMembers/' + $wid + '/' + auth.uid + '/role').val() === 'admin'))",
+              "reactions": {
+                "$emoji": {
+                  "$ruid": {
+                    ".write": "auth != null && root.child('workspaceMembers/' + $wid + '/' + auth.uid).exists() && ($cid.beginsWith('dm_') && $cid.contains(auth.uid) || $cid.beginsWith('grp_') && root.child('groups/' + $wid + '/' + $cid + '/members/' + auth.uid).exists() || root.child('channels/' + $wid + '/' + $cid + '/isPrivate').val() === false && root.child('workspaceMembers/' + $wid + '/' + auth.uid).exists() || root.child('channelMembers/' + $wid + '/' + $cid + '/' + auth.uid).exists()) && auth.uid === $ruid"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "pinnedMessages": {
+      "$wid": {
+        "$cid": {
+          ".read": "auth != null && root.child('workspaceMembers/' + $wid + '/' + auth.uid).exists() && ($cid.beginsWith('dm_') && $cid.contains(auth.uid) || $cid.beginsWith('grp_') && root.child('groups/' + $wid + '/' + $cid + '/members/' + auth.uid).exists() || root.child('channels/' + $wid + '/' + $cid + '/isPrivate').val() === false && root.child('workspaceMembers/' + $wid + '/' + auth.uid).exists() || root.child('channelMembers/' + $wid + '/' + $cid + '/' + auth.uid).exists())",
+          ".write": "auth != null && root.child('workspaceMembers/' + $wid + '/' + auth.uid).exists() && ($cid.beginsWith('dm_') && $cid.contains(auth.uid) || $cid.beginsWith('grp_') && root.child('groups/' + $wid + '/' + $cid + '/members/' + auth.uid).exists() || root.child('channels/' + $wid + '/' + $cid + '/isPrivate').val() === false && root.child('workspaceMembers/' + $wid + '/' + auth.uid).exists() || root.child('channelMembers/' + $wid + '/' + $cid + '/' + auth.uid).exists())"
+        }
+      }
+    },
+    "savedMessages": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && auth.uid === $uid"
+      }
+    },
+    "typing": {
+      "$wid": {
+        "$cid": {
+          ".read": "auth != null && root.child('workspaceMembers/' + $wid + '/' + auth.uid).exists() && ($cid.beginsWith('dm_') && $cid.contains(auth.uid) || $cid.beginsWith('grp_') && root.child('groups/' + $wid + '/' + $cid + '/members/' + auth.uid).exists() || root.child('channels/' + $wid + '/' + $cid + '/isPrivate').val() === false && root.child('workspaceMembers/' + $wid + '/' + auth.uid).exists() || root.child('channelMembers/' + $wid + '/' + $cid + '/' + auth.uid).exists())",
+          "$uid": {
+            ".write": "auth != null && root.child('workspaceMembers/' + $wid + '/' + auth.uid).exists() && ($cid.beginsWith('dm_') && $cid.contains(auth.uid) || $cid.beginsWith('grp_') && root.child('groups/' + $wid + '/' + $cid + '/members/' + auth.uid).exists() || root.child('channels/' + $wid + '/' + $cid + '/isPrivate').val() === false && root.child('workspaceMembers/' + $wid + '/' + auth.uid).exists() || root.child('channelMembers/' + $wid + '/' + $cid + '/' + auth.uid).exists()) && auth.uid === $uid"
+          }
+        }
+      }
+    },
+    "files": {
+      "$wid": {
+        ".read": "auth != null && root.child('workspaceMembers/' + $wid + '/' + auth.uid).exists()",
+        ".write": "auth != null && (root.child('workspaceMembers/' + $wid + '/' + auth.uid + '/role').val() === 'owner' || root.child('workspaceMembers/' + $wid + '/' + auth.uid + '/role').val() === 'admin')",
+        ".indexOn": [
+          "createdAt"
+        ],
+        "$fid": {
+          ".write": "auth != null && root.child('workspaceMembers/' + $wid + '/' + auth.uid).exists() && ((!data.exists() && newData.child('senderId').val() === auth.uid) || data.child('senderId').val() === auth.uid || (root.child('workspaceMembers/' + $wid + '/' + auth.uid + '/role').val() === 'owner' || root.child('workspaceMembers/' + $wid + '/' + auth.uid + '/role').val() === 'admin'))"
+        }
+      }
+    },
+    "notifications": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".indexOn": [
+          "createdAt"
+        ],
+        "$nid": {
+          ".write": "auth != null && (auth.uid === $uid || (!data.exists() && newData.child('fromId').val() === auth.uid))"
+        }
+      }
+    },
+    ".read": false,
+    ".write": false
+  }
+}
